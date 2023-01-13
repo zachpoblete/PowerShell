@@ -1,7 +1,8 @@
 <#
-    Show Chrome extensions installed for all users by looking at their local profiles
+    Originally by @guyrleech
+    https://www.controlup.com/script-library-posts/show-chrome-and-edge-extensions-user/
 
-    @guyrleech 19/05/20
+    Enhanced by @zachpoblete to create a CSV of installed Edge extensions.
 #>
 
 [CmdletBinding()]
@@ -13,7 +14,7 @@ Param
 
 $VerbosePreference = 'SilentlyContinue'
 $DebugPreference = 'SilentlyContinue'
-$ErrorActionPreference = 'Stop'
+#~ $ErrorActionPreference = 'Stop'
 
 [int]$outputWidth = 400
 
@@ -25,7 +26,7 @@ Function Get-ExtensionDetail
     (
         [Parameter(Mandatory)]
         [string]$folder ,
-        [string]$browser = 'Chrome'
+        [string]$browser  #~ = 'Chrome'
     )
     
     Get-ChildItem -Path $folder| Where-Object { $_.PSIsContainer -and $_.Name -cmatch '^[a-z]{32}$' } | . { Process `
@@ -69,7 +70,7 @@ Function Get-ExtensionDetail
                         $extensionName = $messages.$appName | Select-Object -ExpandProperty 'Message'
                     }
                 }
-                $extensions.Add( $extensionId , $extensionName )
+                $extensions.Add( $extensionid , $extensionName )
             }
         }
 
@@ -106,9 +107,9 @@ if( ! $provider )
 
 ## See if we have a Chrome machine policy for user data directory
 
-[string]$chromePoliciesMachineKey = Join-Path -Path (Join-Path -Path 'HKU:' -ChildPath $profile.SID ) -ChildPath 'SOFTWARE\Policies\Google\Chrome'
-[string]$computeruserdatadir = (Get-ItemProperty -Path $chromePoliciesMachineKey -Name 'UserDataDir' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty 'UserDataDir' -ErrorAction SilentlyContinue) `
-    -replace '\${machine_name\}' , $env:COMPUTERNAME
+#~ [string]$chromePoliciesMachineKey = Join-Path -Path (Join-Path -Path 'HKU:' -ChildPath $profile.SID ) -ChildPath 'SOFTWARE\Policies\Google\Chrome'
+#~ [string]$computeruserdatadir = (Get-ItemProperty -Path $chromePoliciesMachineKey -Name 'UserDataDir' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty 'UserDataDir' -ErrorAction SilentlyContinue) `
+#~     -replace '\${machine_name\}' , $env:COMPUTERNAME
 
 [int]$counter = 0
 
@@ -157,13 +158,13 @@ else
         [string]$folderRedirectionsKey = Join-Path -Path (Join-Path -Path 'HKU:' -ChildPath $profile.SID ) -ChildPath 'Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders'
         $localAppdata = Get-ItemProperty -Path $folderRedirectionsKey -Name 'Local AppData' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty 'Local AppData' -ErrorAction SilentlyContinue
 
-        if( [string]::IsNullOrEmpty( $userdatadir ) )
-        {
+        #~ if( [string]::IsNullOrEmpty( $userdatadir ) )
+        #~ {
             ## Computer takes precedence over machine
-            [string]$chromePoliciesKey = Join-Path -Path (Join-Path -Path 'HKU:' -ChildPath $profile.SID ) -ChildPath 'SOFTWARE\Policies\Google\Chrome'
+            #~ [string]$chromePoliciesKey = Join-Path -Path (Join-Path -Path 'HKU:' -ChildPath $profile.SID ) -ChildPath 'SOFTWARE\Policies\Google\Chrome'
             ## Replace Chrome building blocks https://www.chromium.org/administrators/policy-list-3/user-data-directory-variables
-            $userdatadir = Get-ItemProperty -Path $chromePoliciesKey -Name 'UserDataDir' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty 'UserDataDir' -ErrorAction SilentlyContinue
-        }
+            #~ $userdatadir = Get-ItemProperty -Path $chromePoliciesKey -Name 'UserDataDir' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty 'UserDataDir' -ErrorAction SilentlyContinue
+        #~ }
     }
 
     if( [string]::IsNullOrEmpty( $userdatadir ) -and [string]::IsNullOrEmpty( $localAppdata ) )
@@ -176,20 +177,20 @@ else
     }
     
     ## If profile is loaded, look in HKU to see if localappdata is redirected
-    [string]$chromeBaseFolder = $(if( ! [string]::IsNullOrEmpty( $userdatadir )  ) 
-    {
-        Join-Path -Path $userdatadir -ChildPath 'Default\Extensions'
-    }
-    else
-    {
-        Join-Path -Path $localAppdata -ChildPath 'Google\Chrome\User Data\Default\Extensions'
-    })
+    #~ [string]$chromeBaseFolder = $(if( ! [string]::IsNullOrEmpty( $userdatadir )  ) 
+    #~ {
+    #~     Join-Path -Path $userdatadir -ChildPath 'Default\Extensions'
+    #~ }
+    #~ else
+    #~ {
+    #~     Join-Path -Path $localAppdata -ChildPath 'Google\Chrome\User Data\Default\Extensions'
+    #~ })
 
-    if( Test-Path -Path $chromeBaseFolder -PathType Container -ErrorAction SilentlyContinue )
-    {
-        Write-Verbose -Message "$counter : $chromeBaseFolder"
-        Get-ExtensionDetail -folder $chromeBaseFolder -browser 'Chrome'
-    }
+    #~ if( Test-Path -Path $chromeBaseFolder -PathType Container -ErrorAction SilentlyContinue )
+    #~ {
+    #~     Write-Verbose -Message "$counter : $chromeBaseFolder"
+    #~     Get-ExtensionDetail -folder $chromeBaseFolder -browser 'Chrome'
+    #~ }
  
     [string]$edgeBaseFolder = Join-Path -Path $profile.LocalPath -ChildPath 'AppData\Local\Microsoft\Edge\User Data\Default\Extensions'
 
@@ -201,26 +202,51 @@ else
 }})
 
 ## can be in "Google Chrome" key or a GUID
-if( ! ( Get-ItemProperty -Path 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue | Where-Object { $_.PSObject.Properties[ 'DisplayName' ] -and $_.DisplayName -eq 'Google Chrome' }  ) `
-    -and ! ( Get-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue | Where-Object { $_.PSObject.Properties[ 'DisplayName' ] -and $_.DisplayName -eq 'Google Chrome' } ) )
-{
-    Write-Warning -Message "Google Chrome is not installed"
-}
+#~ if( ! ( Get-ItemProperty -Path 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue | Where-Object { $_.PSObject.Properties[ 'DisplayName' ] -and $_.DisplayName -eq 'Google Chrome' }  ) `
+#~     -and ! ( Get-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue | Where-Object { $_.PSObject.Properties[ 'DisplayName' ] -and $_.DisplayName -eq 'Google Chrome' } ) )
+#~ {
+#~     Write-Warning -Message "Google Chrome is not installed"
+#~ }
 
 if( $results -and $results.Count )
 {
-    if( [string]::IsNullOrEmpty( $username ) )
-    {
-        Write-Output -InputObject "Found $($extensions.Count) unique extensions for $counter local user profiles"
-    }
-    else
-    {
-        Write-Output -InputObject "Found $($extensions.Count) unique extensions for user $username"
-    }
+    #~ if( [string]::IsNullOrEmpty( $username ) )
+    #~ {
+    #~     Write-Output -InputObject "Found $($extensions.Count) unique extensions for $counter local user profiles"
+    #~ }
+    #~ else
+    #~ {
+    #~     Write-Output -InputObject "Found $($extensions.Count) unique extensions for user $username"
+    #~ }
     ## Because we group on id and browser, Name will be "id, browser"
-    $results|Group-Object -Property id,Browser | Select-Object @{n='Id';e={($_.Name -split ',')[0]}},@{n='Browser';e={($_.Name -split ',' , 2)[-1].Trim()}},@{n='Extension';e={$_.Group[0].Extension}},Count | Sort-Object -Property @{ e='Count' ; Descending = $true },@{ e='Extension'; Descending = $false} | Format-Table -AutoSize
+    #~ $results|Group-Object -Property id,Browser | Select-Object @{n='id';e={($_.Name -split ',')[0]}},@{n='Browser';e={($_.Name -split ',' , 2)[-1].Trim()}},@{n='Extension';e={$_.Group[0].Extension}},Count | Sort-Object -Property @{ e='Count' ; Descending = $true },@{ e='Extension'; Descending = $false} | Format-Table -AutoSize
+    $results = $results | Group-Object -Property id | Select-Object @{n='id';e={($_.Name -split ',')[0]}},@{n='Extension';e={$_.Group[0].Extension}},@{n='Link';e={''}}
 }
 else
 {
-    Write-Warning -Message "No Chrome extensions found"
+    Write-Warning -Message "No extensions found"
 }
+
+$ErrorActionPreference = 'SilentlyContinue'
+
+foreach($thisExtension in $results)
+{
+    $uri = 'https://chrome.google.com/webstore/detail/'
+
+    $data = Invoke-WebRequest -Uri ($uri + $thisExtension.id) | Select-Object Content
+    $data = $data.Content
+
+    # RegEx which pulls the title from og:title meta property
+    $title = [regex] '(?<=og:title" content=").*?(?=">)'
+
+    if( $title.Match($data).Value -eq $thisExtension.Extension) {
+        $thisExtension.Link = 'https://chrome.google.com/webstore/detail/' + $thisExtension.id
+    }
+    else
+    {
+        $thisExtension.Link = 'https://microsoftedge.microsoft.com/addons/detail/' + $thisExtension.id
+    }
+}
+
+$extensionsFilePath = "$env:USERPROFILE\Documents\Browser Extensions\extensions.csv"
+$results | Select-Object -Property Extension,Link | Sort-Object -Property @{ e='Extension'; Descending = $false} | Export-Csv -Path $extensionsFilePath -NoTypeInformation
