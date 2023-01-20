@@ -248,5 +248,5 @@ foreach($thisExtension in $results)
     }
 }
 
-$extensionsFilePath = "$env:USERPROFILE\Documents\Browser Extensions\extensions.csv"
+$extensionsFilePath = "$env:USERPROFILE\Documents\Browser Extensions (Public)\extensions.csv"
 $results | Select-Object -Property Extension,Link | Sort-Object -Property @{ e='Extension'; Descending = $false} | Export-Csv -Path $extensionsFilePath -NoTypeInformation
