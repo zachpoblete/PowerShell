@@ -238,15 +238,20 @@ foreach($thisExtension in $results)
 
     # RegEx which pulls the title from og:title meta property
     $title = [regex] '(?<=og:title" content=").*?(?=">)'
+    $title = $title.Match($data).Value
 
-    if( $title.Match($data).Value -eq $thisExtension.Extension) {
-        $thisExtension.Link = 'https://chrome.google.com/webstore/detail/' + $thisExtension.id
-    }
-    else
+    if( $title -eq $thisExtension.Extension )
     {
-        $thisExtension.Link = 'https://microsoftedge.microsoft.com/addons/detail/' + $thisExtension.id
+        $thisExtension.Link = 'https://chrome.google.com/webstore/detail/' + $thisExtension.id
+        continue
+    }
+
+    $thisExtension.Link = 'https://microsoftedge.microsoft.com/addons/detail/' + $thisExtension.id
+    if( $title )
+    {
+        $thisExtension.Extension = $title
     }
 }
 
 $extensionsFilePath = "$env:USERPROFILE\Documents\Browser Extensions (Public)\extensions.csv"
-$results | Select-Object -Property Extension,Link | Sort-Object -Property @{ e='Extension'; Descending = $false} | Export-Csv -Path $extensionsFilePath -NoTypeInformation
+$results | Select-Object -Property Extension,Link | Sort-Object -Property @{ e='Extension'; Descending = $false} | Export-Csv -Path $extensionsFilePath -NoTypeInformation -Encoding UTF8
